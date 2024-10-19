@@ -1,60 +1,28 @@
 <template>
-  <div
-    class="editor"
-    id="editor"
-    :class="{ edit: isEdit }"
-    :style="{
+    <div class="editor" id="editor" :class="{ edit: isEdit }" :style="{
       ...getCanvasStyle(canvasStyleData),
-    }"
-    @mousedown="handleMouseDown"
-  >
-    <Grid :is-dark-mode="isDarkMode" />
-    <Shape
-      v-for="(item, index) in componentData"
-      :key="item.id"
-      :default-style="item.style"
-      :element="item"
-      :index="index"
-      :class="{ lock: item.isLock }"
-      :style="getShapeStyle(item.style)"
-      :active="item.id === (curComponent || {}).id"
-    >
-      <component
-        :is="getComponent(item.component)"
-        v-if="item.component.startsWith('SVG')"
-        :id="'component' + item.id"
-        :style="getSVGStyle(item.style)"
-        class="component"
-        :prop-value="item.propValue"
-        :element="item"
-        :request="item.request"
-      />
+    }" @mousedown="handleMouseDown" @contextmenu="handleContextMenu">
+        <Grid :is-dark-mode="isDarkMode" />
+        <Shape v-for="(item, index) in componentData" :key="item.id" :default-style="item.style" :element="item"
+            :index="index" :class="{ lock: item.isLock }" :style="getShapeStyle(item.style)"
+            :active="item.id === (curComponent || {}).id">
+            <component :is="getComponent(item.component)" v-if="item.component.startsWith('SVG')"
+                :id="'component' + item.id" :style="getSVGStyle(item.style)" class="component"
+                :prop-value="item.propValue" :element="item" :request="item.request" />
 
-      <component
-        :is="getComponent(item.component)"
-        v-else-if="item.component != 'VText'"
-        :id="'component' + item.id"
-        class="component"
-        :style="getComponentStyle(item.style)"
-        :prop-value="item.propValue"
-        :element="item"
-        :request="item.request"
-      />
+            <component :is="getComponent(item.component)" v-else-if="item.component != 'VText'"
+                :id="'component' + item.id" class="component" :style="getComponentStyle(item.style)"
+                :prop-value="item.propValue" :element="item" :request="item.request" />
 
-      <component
-        :is="getComponent(item.component)"
-        v-else
-        :id="'component' + item.id"
-        class="component"
-        :style="getComponentStyle(item.style)"
-        :prop-value="item.propValue"
-        :element="item"
-        :request="item.request"
-        @input="handleInput"
-      />
-    </Shape>
-    <MarkLine />
-  </div>
+            <component :is="getComponent(item.component)" v-else :id="'component' + item.id" class="component"
+                :style="getComponentStyle(item.style)" :prop-value="item.propValue" :element="item"
+                :request="item.request" @input="handleInput" />
+        </Shape>
+        <!-- 右键菜单 -->
+        <ContextMenu :rightMenu="rightMenu" :menuShow='menuShow'></ContextMenu>
+        <!-- 斑马线 -->
+        <MarkLine />
+    </div>
 </template>
 
 <script lang="ts" setup>
@@ -67,10 +35,15 @@ import componentList from "../../custom-component/index.ts"
 import { changeStyleWithScale } from "../../utils/translate"
 import { useAppStore } from "../../store/index"
 import MarkLine from "@/components/Editor/MarkLine.vue"
+import ContextMenu from "@/components/Editor/ContextMenu.vue"
 const appStore = useAppStore()
 const { componentData, isDarkMode, canvasStyleData, curComponent, editor } = storeToRefs(appStore)
 const { setAreaData, getEditor } = appStore
-
+const rightMenu = ref({
+    menuTop: 0,
+    menuLeft: 0
+})
+const menuShow = ref(false)
 defineProps({
   isEdit: {
     type: Boolean,
@@ -99,6 +72,8 @@ const handleInput = () => {
 }
 // 点击组件后
 const handleMouseDown = (e: any) => {
+    window.console.log(111111);
+    menuShow.value = false
   if (!curComponent.value) e.preventDefault()
   hideArea()
   const rectInfo = editor.value!.getBoundingClientRect()
@@ -135,6 +110,20 @@ const handleMouseDown = (e: any) => {
   document.addEventListener("mousemove", move)
   document.addEventListener("mouseup", up)
   document.addEventListener("mouseleave", up)
+}
+const handleContextMenu  =(e: any)=>{
+    e.stopPropagation()
+    e.preventDefault()
+    // 计算菜单相对于编辑器的位移
+    let target = e.target
+    let top = e.offsetY
+    let left = e.offsetX
+    while (typeof target.className === 'string' && !target.className.includes('editor')) {
+        menuShow.value = true
+        rightMenu.value.menuLeft = left + target.offsetLeft
+        rightMenu.value.menuTop= top + target.offsetTop
+        target = target.parentNode
+    }
 }
 const hideArea = () => {
   isShowArea.value = false
